@@ -65,11 +65,12 @@ def hersheyparse(dat):
     return glyph
 
 
-hershey = []
-f = open(sys.argv[1], 'r')
-for line in f:
-    g = hersheyparse(line.rstrip())
-    if g != None:
-        hershey.append(g)
-f.close()
-print json.dumps(hershey, sort_keys=True, separators=(',', ':'))
+if __name__ == '__main__':
+    hershey = []
+    f = open(sys.argv[1], 'r')
+    for line in f:
+        g = hersheyparse(line.rstrip())
+        if g != None:
+            hershey.append(g)
+    f.close()
+    print json.dumps(hershey, sort_keys=True, separators=(',', ':'))
