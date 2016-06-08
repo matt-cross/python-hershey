@@ -18,9 +18,11 @@ def turn_circle(r):
     r.TurnInPlace(300, 'cw')
 
     # Until we reach our stopping point
-    while angle_sum < 360:
+    while angle_sum > -360:
+	time.sleep(0.1)
         r.sensors.GetAll()
         angle_sum += r.sensors['angle']
+	print ('angle_sum now {}'.format(angle_sum))
 
     # Stop turning:
     r.Stop()
