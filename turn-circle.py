@@ -17,8 +17,8 @@ class RobotKinematics:
         self.reset(r)
 
     def update(self, r):
-        new_left = r.data['encoder-counts-left']
-        new_right = r.data['encoder-counts-right']
+        new_left = r.sensors['encoder-counts-left']
+        new_right = r.sensors['encoder-counts-right']
 
         delta_left = sign_extend_16(new_left - self.prev_left_encoder)
         delta_right = sign_extend_16(new_right - self.prev_right_encoder)
@@ -34,8 +34,8 @@ class RobotKinematics:
         self.angle_rad += (delta_right_mm - delta_left_mm) / self.wheel_base_mm
 
     def reset(self, r):
-        self.prev_left_encoder = r.data['encoder-counts-left']
-        self.prev_right_encoder = r.data['encoder-counts-right']
+        self.prev_left_encoder = r.sensors['encoder-counts-left']
+        self.prev_right_encoder = r.sensors['encoder-counts-right']
 
         self.distance_mm = 0.0
         self.angle_rad = 0.0
@@ -80,7 +80,7 @@ def turn_circle(r):
     # Measure overshoot:
     time.sleep(0.5)
     r.sensors.GetAll()
-    k.update()
+    k.update(r)
 
     print ('Attempted to turn full circle.  Stopped at {} degrees, then overshot {} degrees'.format(angle_sum, k.angle_deg()))
     
