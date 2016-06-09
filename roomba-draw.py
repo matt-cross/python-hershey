@@ -120,7 +120,7 @@ def drive_relative(r, k, dist_mm):
     print ('Attempted to drive {} mm.  Stopped at {} mm, then settled at {} mm'.format(dist_mm, dist_stopped, k.distance_mm()))
     
     
-def turn(r, k, args):
+def turn(r, args):
     # Attempt to put the robot into safe mode
     r.safe = True
     r.Control()
@@ -177,4 +177,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    commands[args.command](args.args)
+    commands[args.command](r, args.args)
