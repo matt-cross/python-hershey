@@ -31,7 +31,7 @@ class RobotKinematics:
         delta_left_mm = delta_left / self.counts_per_rev * (math.pi * 72)
         delta_right_mm = delta_right / self.counts_per_rev * (math.pi * 72)
 
-        self.distance_mm += (delta_left_mm + delta_right_mm) / 2
+        self.dist_mm += (delta_left_mm + delta_right_mm) / 2
 
         self.angle_rad += (delta_right_mm - delta_left_mm) / self.wheel_base_mm
 
@@ -39,7 +39,7 @@ class RobotKinematics:
         self.prev_left_encoder = r.sensors['encoder-counts-left']
         self.prev_right_encoder = r.sensors['encoder-counts-right']
 
-        self.distance_mm = 0.0
+        self.dist_mm = 0.0
         self.angle_rad = 0.0
 
     def angle_deg(self):
@@ -49,15 +49,21 @@ class RobotKinematics:
         return self.angle_rad
 
     def distance_mm(self):
-        return self.distance_mm
+        return self.dist_mm
 
 def turn_relative(r, k, new_angle):
     k.reset(r)
-    
+
+    prev_speed = 0
+    max_accel = 25
+
     # Until we reach our stopping point
     while abs(new_angle - k.angle_deg()) > 1.0:
         delta_deg = new_angle - k.angle_deg()
         speed = abs(delta_deg) * 5
+
+        if (speed - prev_speed) > max_accel:
+            speed = prev_speed + max_accel
 
         if speed > 200:
             speed = 200
@@ -70,6 +76,7 @@ def turn_relative(r, k, new_angle):
             dir = 'ccw'
 
         r.TurnInPlace(speed, dir)
+        prev_speed = speed
             
         r.sensors.GetAll()
         k.update(r)
@@ -88,11 +95,19 @@ def turn_relative(r, k, new_angle):
     
 def drive_relative(r, k, dist_mm):
     k.reset(r)
+
+    prev_speed = 0
+    max_accel = 25
     
     # Until we reach our stopping point
-    while abs(dist_mm - k.distance_mm()) > 1.0:
+    while abs(dist_mm - k.distance_mm()) > 1.5:
         delta_mm = dist_mm - k.distance_mm()
-        speed = delta_mm * 5
+        speed = delta_mm * 3
+
+        if (speed - prev_speed) > max_accel:
+            speed = prev_speed + max_accel
+        elif (speed - prev_speed) < -max_accel:
+            speed = prev_speed - max_accel
 
         if speed > 200:
             speed = 200
@@ -104,6 +119,7 @@ def drive_relative(r, k, dist_mm):
             speed = -200
 
         r.DriveStraight(speed)
+        prev_speed = speed
             
         r.sensors.GetAll()
         k.update(r)
