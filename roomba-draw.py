@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import argparse
 import math
 import sys
 import time
@@ -85,7 +86,41 @@ def turn_relative(r, k, new_angle):
     print ('Attempted to turn {} degrees.  Stopped at {} degrees, then settled at {} degrees'.format(new_angle, angle_stopped, k.angle_deg()))
     
     
-def turn(r, angle):
+def drive_relative(r, k, dist_mm):
+    k.reset(r)
+    
+    # Until we reach our stopping point
+    while abs(dist_mm - k.distance_mm()) > 1.0:
+        delta_mm = dist_mm - k.distance_mm()
+        speed = delta_mm * 5
+
+        if speed > 200:
+            speed = 200
+        elif speed > 0 and speed < 11:
+            speed = 11
+        elif speed < 0 and speed > -11:
+            speed = -11
+        elif speed < -200:
+            speed = -200
+
+        r.DriveStraight(speed)
+            
+        r.sensors.GetAll()
+        k.update(r)
+
+    # Stop turning:
+    dist_stopped = k.distance_mm()
+    r.Stop()
+
+    # Measure overshoot:
+    time.sleep(0.25)
+    r.sensors.GetAll()
+    k.update(r)
+
+    print ('Attempted to drive {} mm.  Stopped at {} mm, then settled at {} mm'.format(dist_mm, dist_stopped, k.distance_mm()))
+    
+    
+def turn(r, k, args):
     # Attempt to put the robot into safe mode
     r.safe = True
     r.Control()
@@ -97,14 +132,49 @@ def turn(r, angle):
 
     k = RobotKinematics(r)
 
+    if len(args) > 0:
+        angle = float(args[0])
+    else:
+        angle = -360
+
     turn_relative(r, k, angle)
+
+def drive(r, args):
+    # Attempt to put the robot into safe mode
+    r.safe = True
+    r.Control()
+
+    r.sensors.GetAll()
+    if r.sensors['oi-mode'] != 'safe':
+        print ('Failed to enter safe mode - is a wheel up or the front over a cliff?')
+        return
+
+    k = RobotKinematics(r)
+
+    if len(args) > 0:
+        dist_mm = float(args[0])
+    else:
+        dist_mm = 30
+
+    drive_relative(r, k, dist_mm)
+
+def draw(r, args):
+    pass
     
-    
+
+commands = {
+    'turn': turn,
+    'drive': drive,
+    'draw': draw,
+    }
 
 if __name__ == '__main__':
     r = pyrobot2.Create2('/dev/ttyAMA0')
-    if len(sys.argv) >= 2:
-        angle = int(sys.argv[1])
-    else:
-        angle = -360
-    turn(r, angle)
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('command', help='Name of command to run, valid commands are {}'.format(commands.keys()))
+    parser.add_argument('args', nargs='*', help='Argument(s) to command')
+
+    args = parser.parse_args()
+
+    commands[args.command](args.args)
