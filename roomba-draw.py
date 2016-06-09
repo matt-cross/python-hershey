@@ -53,15 +53,19 @@ class RobotKinematics:
 
 class Pen:
     def __init__(self, down_pct=40, up_pct=50):
-        self.dev = open('/dev/servoblaster', 'wb')
+        self.dev = '/dev/servoblaster'
         self.down_cmd = '0={}%\n'.format(down_pct)
         self.up_cmd = '0={}%\n'.format(up_pct)
 
     def up(self):
-        self.dev.write(self.up_cmd)
+	with open(self.dev, 'wb') as f:
+            f.write(self.up_cmd)
+        time.sleep(0.5)
 
     def down(self):
-        self.dev.write(self.down_cmd)
+	with open(self.dev, 'wb') as f:
+            f.write(self.down_cmd)
+        time.sleep(0.5)
 
 
 class Robot:
@@ -201,11 +205,19 @@ def draw_square(r, args):
 
     r.pen.up()
 
+def pen_up(r, args):
+    r.pen.up()
+
+def pen_down(r, args):
+    r.pen.down()
+
 commands = {
     'turn': turn,
     'drive': drive,
     'draw': draw,
     'draw_square': draw_square,
+    'pen_up': pen_up,
+    'pen_down': pen_down,
     }
 
 if __name__ == '__main__':
