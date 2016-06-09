@@ -181,12 +181,31 @@ def drive(r, args):
 
 def draw(r, args):
     pass
-    
+
+def draw_square(r, args):
+    if len(args) > 0:
+        dist_mm = float(args[0])
+    else:
+        dist_mm = 30
+
+    r.pen.down()
+
+    drive_relative(r, dist_mm)
+    turn_relative(r, -90)
+    drive_relative(r, dist_mm)
+    turn_relative(r, -90)
+    drive_relative(r, dist_mm)
+    turn_relative(r, -90)
+    drive_relative(r, dist_mm)
+    turn_relative(r, -90)
+
+    r.pen.up()
 
 commands = {
     'turn': turn,
     'drive': drive,
     'draw': draw,
+    'draw_square': draw_square,
     }
 
 if __name__ == '__main__':
