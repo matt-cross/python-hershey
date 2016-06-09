@@ -41,7 +41,7 @@ class RobotKinematics:
 
         self.x = 0.0
         self.y = 0.0
-        self.theta_rad = math.pi/2 # start out pointing north - toward positiv Y axis
+        self.theta = math.pi/2 # start out pointing north - toward positiv Y axis
         
     def update(self, r):
         new_left = r.sensors['encoder-counts-left']
@@ -63,8 +63,8 @@ class RobotKinematics:
         self.angle_rad += delta_angle_rad
 
         self.theta += delta_angle_rad
-        self.x += math.cos(self.theta) * delta_mm
-        self.y += math.sin(self.theta) * delta_mm
+        self.x += math.cos(self.theta) * delta_dist_mm
+        self.y += math.sin(self.theta) * delta_dist_mm
         
     def reset(self, r):
         self.prev_left_encoder = r.sensors['encoder-counts-left']
@@ -134,7 +134,7 @@ def turn_relative(r, new_angle):
     r.tracker_reset()
     
     prev_speed = 0
-    max_accel = 25
+    max_accel = 10
 
     # Until we reach our stopping point
     while abs(new_angle - r.tracker.angle_deg()) > 1.0:
@@ -228,14 +228,14 @@ def drive(r, args):
 
 def goto(r, x, y):
     # First figure out our desired heading and distance to target:
-    delta_x = x - r.tracking.x_mm()
-    delta_y = y - r.tracking.y_mm()
+    delta_x = x - r.tracker.x_mm()
+    delta_y = y - r.tracker.y_mm()
     
     abs_heading_rad = math.atan2(delta_y, delta_x)
     dist_mm = math.sqrt(delta_x * delta_x + delta_y * delta_y)
 
     # Make heading relative in degrees and turn to it:
-    delta_heading_rad = abs_heading_rad - r.tracking.theta_rad()
+    delta_heading_rad = abs_heading_rad - r.tracker.theta_rad()
     turn_relative(r, delta_heading_rad * 180 / math.pi)
 
     # Move:
@@ -249,11 +249,14 @@ def draw(r, args):
 
     h = HersheyFont()
 
+    x_scale = 2
+    y_scale = -2 # Y axis positive is *down* for Hershey...
+
     r.pen.up()
     for c in list(text):
         glyph = h.hersheyglyph(c)
-        x_origin = r.tracking.x_mm()
-        y_origin = r.tracking.y_mm()
+        x_origin = r.tracker.x_mm()
+        y_origin = r.tracker.y_mm()
 
         for line in glyph['lines']:
             first = 1
@@ -283,15 +286,19 @@ def draw_square(r, args):
     r.pen.down()
 
     drive_relative(r, dist_mm)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     turn_relative(r, -90)
     print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     drive_relative(r, dist_mm)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     turn_relative(r, -90)
     print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     drive_relative(r, dist_mm)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     turn_relative(r, -90)
     print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     drive_relative(r, dist_mm)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     turn_relative(r, -90)
     print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
 
