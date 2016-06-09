@@ -236,6 +236,12 @@ def goto(r, x, y):
 
     # Make heading relative in degrees and turn to it:
     delta_heading_rad = abs_heading_rad - r.tracker.theta_rad()
+
+    while delta_heading_rad > math.pi:
+        delta_heading_rad -= math.pi * 2
+    while delta_heading_rad < -math.pi:
+        delta_heading_rad += math.pi * 2
+
     turn_relative(r, delta_heading_rad * 180 / math.pi)
 
     # Move:
