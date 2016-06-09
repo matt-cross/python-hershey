@@ -48,29 +48,29 @@ class RobotKinematics:
 
     def distance_mm(self):
         return self.distance_mm
-        
-def turn_circle(r):
-    # Attempt to put the robot into safe mode
-    r.safe = True
-    r.Control()
 
-    r.sensors.GetAll()
-    if r.sensors['oi-mode'] != 'safe':
-        print ('Failed to enter safe mode - is a wheel up or the front over a cliff?')
-        return
-
-    # Start turning
-    k = RobotKinematics(r)
-    r.TurnInPlace(300, 'cw')
-
+def turn_relative(r, k, new_angle):
+    k.reset(r)
+    
     # Until we reach our stopping point
-    while k.angle_deg() > -360:
-        time.sleep(0.1) # temp for debug
-        
+    while abs(new_angle - k.angle_deg()) > 0.5:
+        delta_deg = new_angle - k.angle_deg()
+        speed = abs(delta_deg)
+
+        if speed > 200:
+            speed = 200
+        elif speed < 10:
+            speed = 10
+
+        if delta_deg < 0:
+            dir = 'cw'
+        else:
+            dir = 'ccw'
+
+        r.TurnInPlace(speed, dir)
+            
         r.sensors.GetAll()
         k.update(r)
-
-	print ('angle now {}'.format(k.angle_deg()))
 
     # Stop turning:
     angle_sum = k.angle_deg()
@@ -82,7 +82,23 @@ def turn_circle(r):
     r.sensors.GetAll()
     k.update(r)
 
-    print ('Attempted to turn full circle.  Stopped at {} degrees, then overshot {} degrees'.format(angle_sum, k.angle_deg()))
+    print ('Attempted to turn full circle.  Stopped at {} degrees, then settled {} degrees more'.format(angle_sum, k.angle_deg()))
+    
+    
+def turn_circle(r):
+    # Attempt to put the robot into safe mode
+    r.safe = True
+    r.Control()
+
+    r.sensors.GetAll()
+    if r.sensors['oi-mode'] != 'safe':
+        print ('Failed to enter safe mode - is a wheel up or the front over a cliff?')
+        return
+
+    k = RobotKinematics(r)
+
+    turn_relative(r, k, -360)
+    
     
 
 if __name__ == '__main__':
