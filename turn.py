@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import math
+import sys
 import time
 
 import pyrobot2
@@ -53,14 +54,14 @@ def turn_relative(r, k, new_angle):
     k.reset(r)
     
     # Until we reach our stopping point
-    while abs(new_angle - k.angle_deg()) > 0.5:
+    while abs(new_angle - k.angle_deg()) > 1.0:
         delta_deg = new_angle - k.angle_deg()
-        speed = abs(delta_deg)
+        speed = abs(delta_deg) * 5
 
         if speed > 200:
             speed = 200
-        elif speed < 10:
-            speed = 10
+        elif speed < 11:
+            speed = 11
 
         if delta_deg < 0:
             dir = 'cw'
@@ -73,19 +74,18 @@ def turn_relative(r, k, new_angle):
         k.update(r)
 
     # Stop turning:
-    angle_sum = k.angle_deg()
-    k.reset(r)
+    angle_stopped = k.angle_deg()
     r.Stop()
 
     # Measure overshoot:
-    time.sleep(0.5)
+    time.sleep(0.25)
     r.sensors.GetAll()
     k.update(r)
 
-    print ('Attempted to turn full circle.  Stopped at {} degrees, then settled {} degrees more'.format(angle_sum, k.angle_deg()))
+    print ('Attempted to turn {} degrees.  Stopped at {} degrees, then settled at {} degrees'.format(new_angle, angle_stopped, k.angle_deg()))
     
     
-def turn_circle(r):
+def turn(r, angle):
     # Attempt to put the robot into safe mode
     r.safe = True
     r.Control()
@@ -97,10 +97,14 @@ def turn_circle(r):
 
     k = RobotKinematics(r)
 
-    turn_relative(r, k, -360)
+    turn_relative(r, k, angle)
     
     
 
 if __name__ == '__main__':
     r = pyrobot2.Create2('/dev/ttyAMA0')
-    turn_circle(r)
+    if len(sys.argv) >= 2:
+        angle = int(sys.argv[1])
+    else:
+        angle = -360
+    turn(r, angle)
