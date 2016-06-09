@@ -5,7 +5,28 @@ import math
 import sys
 import time
 
+import hersheyparse
+import hersheymap_parse
 import pyrobot2
+
+# Hershey vector font class:
+class HersheyFont:
+    def __init__(self):
+        self.mapfile = "romans.hmp"
+        self.fontfile = "hershey-occidental.dat"
+
+        # Parse the font file
+        self.glyphs = {}
+        for line in open(self.fontfile, 'r'):
+            glyph = hersheyparse.hersheyparse(line.rstrip())
+            self.glyphs[glyph['charcode']] = glyph
+
+        # Parse the character map file
+        self.hersheymap = hersheymap_parse.parse(self.mapfile)
+
+    # Given an ascii character, return the hershey glyph object associated with it.
+    def hersheyglyph(self, char):
+        return self.glyphs[self.hersheymap[ord(char) - 32]]
 
 def sign_extend_16(value):
     return (value & 0x7FFF) - (value & 0x8000)
@@ -18,6 +39,10 @@ class RobotKinematics:
 
         self.reset(r)
 
+        self.x = 0.0
+        self.y = 0.0
+        self.theta_rad = math.pi/2 # start out pointing north - toward positiv Y axis
+        
     def update(self, r):
         new_left = r.sensors['encoder-counts-left']
         new_right = r.sensors['encoder-counts-right']
@@ -31,10 +56,16 @@ class RobotKinematics:
         delta_left_mm = delta_left / self.counts_per_rev * (math.pi * 72)
         delta_right_mm = delta_right / self.counts_per_rev * (math.pi * 72)
 
-        self.dist_mm += (delta_left_mm + delta_right_mm) / 2
+        delta_dist_mm = (delta_left_mm + delta_right_mm) / 2
+        delta_angle_rad = (delta_right_mm - delta_left_mm) / self.wheel_base_mm
+        
+        self.dist_mm += delta_dist_mm
+        self.angle_rad += delta_angle_rad
 
-        self.angle_rad += (delta_right_mm - delta_left_mm) / self.wheel_base_mm
-
+        self.theta += delta_angle_rad
+        self.x += math.cos(self.theta) * delta_mm
+        self.y += math.sin(self.theta) * delta_mm
+        
     def reset(self, r):
         self.prev_left_encoder = r.sensors['encoder-counts-left']
         self.prev_right_encoder = r.sensors['encoder-counts-right']
@@ -51,6 +82,18 @@ class RobotKinematics:
     def distance_mm(self):
         return self.dist_mm
 
+    def x_mm(self):
+        return self.x
+
+    def y_mm(self):
+        return self.y
+
+    def theta_deg(self):
+        return self.theta * 180 / math.pi
+
+    def theta_rad(self):
+        return self.theta
+    
 class Pen:
     def __init__(self, down_pct=40, up_pct=50):
         self.dev = '/dev/servoblaster'
@@ -183,8 +226,51 @@ def drive(r, args):
 
     drive_relative(r, dist_mm)
 
+def goto(r, x, y):
+    # First figure out our desired heading and distance to target:
+    delta_x = x - r.tracking.x_mm()
+    delta_y = y - r.tracking.y_mm()
+    
+    abs_heading_rad = math.atan2(delta_y, delta_x)
+    dist_mm = math.sqrt(delta_x * delta_x + delta_y * delta_y)
+
+    # Make heading relative in degrees and turn to it:
+    delta_heading_rad = abs_heading_rad - r.tracking.theta_rad()
+    turn_relative(r, delta_heading_rad * 180 / math.pi)
+
+    # Move:
+    drive_relative(r, dist_mm)
+    
 def draw(r, args):
-    pass
+    if len(args) < 1:
+        text = "Test"
+    else:
+        text = args[0]
+
+    h = HersheyFont()
+
+    r.pen.up()
+    for c in list(text):
+        glyph = h.hersheyglyph(c)
+        x_origin = r.tracking.x_mm()
+        y_origin = r.tracking.y_mm()
+
+        for line in glyph['lines']:
+            first = 1
+            for pt in line:
+                if first == 1:
+                    first = 0
+                    goto(r, x_origin + x_scale * (pt[0] - glyph['left']), y_origin + y_scale * pt[1])
+                    r.pen.down()
+                else:
+                    goto(r, x_origin + x_scale * (pt[0] - glyph['left']), y_origin + y_scale * pt[1])
+
+            r.pen.up()
+
+            # don't forget to move to (right sidebearing, 0) at end of draw
+            new_x = x_origin + x_scale * (glyph['right'] - glyph['left'])
+            new_y = y_origin
+            goto(r, new_x, new_y)
 
 def draw_square(r, args):
     if len(args) > 0:
@@ -192,16 +278,22 @@ def draw_square(r, args):
     else:
         dist_mm = 30
 
+    print ('starting at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
+
     r.pen.down()
 
     drive_relative(r, dist_mm)
     turn_relative(r, -90)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     drive_relative(r, dist_mm)
     turn_relative(r, -90)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     drive_relative(r, dist_mm)
     turn_relative(r, -90)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
     drive_relative(r, dist_mm)
     turn_relative(r, -90)
+    print ('now at ({},{}) theta {}'.format(r.tracker.x_mm(), r.tracker.y_mm(), r.tracker.theta_deg()))
 
     r.pen.up()
 
