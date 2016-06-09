@@ -138,7 +138,7 @@ def drive_relative(r, dist_mm):
         elif (speed - prev_speed) < -max_accel:
             speed = prev_speed - max_accel
 
-            if speed > 200:
+        if speed > 200:
             speed = 200
         elif speed > 0 and speed < 11:
             speed = 11
