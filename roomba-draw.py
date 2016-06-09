@@ -51,15 +51,47 @@ class RobotKinematics:
     def distance_mm(self):
         return self.dist_mm
 
-def turn_relative(r, k, new_angle):
-    k.reset(r)
+class Pen:
+    def __init__(self, down_pct=40, up_pct=50):
+        self.dev = open('/dev/servoblaster', 'wb')
+        self.down_cmd = '0={}%\n'.format(down_pct)
+        self.up_cmd = '0={}%\n'.format(up_pct)
 
+    def up(self):
+        self.dev.write(self.up_cmd)
+
+    def down(self):
+        self.dev.write(self.down_cmd)
+
+
+class Robot:
+    def __init__(self, serial_dev = '/dev/ttyAMA0'):
+        self.create = pyrobot2.Create2(serial_dev)
+        self.create.safe = True
+        self.create.Control()
+        self.create.sensors.GetAll()
+        if self.create.sensors['oi-mode'] != 'safe':
+            raise RuntimeError('Failed to enter safe mode - is a wheel up or the front over a cliff?')
+        
+        self.tracker = RobotKinematics(self.create)
+        self.pen = Pen()
+
+    def tracker_update(self):
+        self.create.sensors.GetAll()
+        self.tracker.update(self.create)
+
+    def tracker_reset(self):
+        self.tracker.reset(self.create)
+
+def turn_relative(r, new_angle):
+    r.tracker_reset()
+    
     prev_speed = 0
     max_accel = 25
 
     # Until we reach our stopping point
-    while abs(new_angle - k.angle_deg()) > 1.0:
-        delta_deg = new_angle - k.angle_deg()
+    while abs(new_angle - r.tracker.angle_deg()) > 1.0:
+        delta_deg = new_angle - r.tracker.angle_deg()
         speed = abs(delta_deg) * 5
 
         if (speed - prev_speed) > max_accel:
@@ -75,33 +107,30 @@ def turn_relative(r, k, new_angle):
         else:
             dir = 'ccw'
 
-        r.TurnInPlace(speed, dir)
+        r.create.TurnInPlace(speed, dir)
         prev_speed = speed
-            
-        r.sensors.GetAll()
-        k.update(r)
+        r.tracker_update()
 
     # Stop turning:
-    angle_stopped = k.angle_deg()
-    r.Stop()
+    angle_stopped = r.tracker.angle_deg()
+    r.create.Stop()
 
     # Measure overshoot:
     time.sleep(0.25)
-    r.sensors.GetAll()
-    k.update(r)
+    r.tracker_update()
 
-    print ('Attempted to turn {} degrees.  Stopped at {} degrees, then settled at {} degrees'.format(new_angle, angle_stopped, k.angle_deg()))
+    print ('Attempted to turn {} degrees.  Stopped at {} degrees, then settled at {} degrees'.format(new_angle, angle_stopped, r.tracker.angle_deg()))
     
     
-def drive_relative(r, k, dist_mm):
-    k.reset(r)
-
+def drive_relative(r, dist_mm):
+    r.tracker_reset()
+    
     prev_speed = 0
     max_accel = 25
     
     # Until we reach our stopping point
-    while abs(dist_mm - k.distance_mm()) > 1.5:
-        delta_mm = dist_mm - k.distance_mm()
+    while abs(dist_mm - r.tracker.distance_mm()) > 1.5:
+        delta_mm = dist_mm - r.tracker.distance_mm()
         speed = delta_mm * 3
 
         if (speed - prev_speed) > max_accel:
@@ -109,7 +138,7 @@ def drive_relative(r, k, dist_mm):
         elif (speed - prev_speed) < -max_accel:
             speed = prev_speed - max_accel
 
-        if speed > 200:
+            if speed > 200:
             speed = 200
         elif speed > 0 and speed < 11:
             speed = 11
@@ -118,61 +147,37 @@ def drive_relative(r, k, dist_mm):
         elif speed < -200:
             speed = -200
 
-        r.DriveStraight(speed)
+        r.create.DriveStraight(speed)
         prev_speed = speed
             
-        r.sensors.GetAll()
-        k.update(r)
+        r.tracker_update()
 
     # Stop turning:
-    dist_stopped = k.distance_mm()
-    r.Stop()
+    dist_stopped = r.tracker.distance_mm()
+    r.create.Stop()
 
     # Measure overshoot:
     time.sleep(0.25)
-    r.sensors.GetAll()
-    k.update(r)
+    r.tracker_update()
 
-    print ('Attempted to drive {} mm.  Stopped at {} mm, then settled at {} mm'.format(dist_mm, dist_stopped, k.distance_mm()))
+    print ('Attempted to drive {} mm.  Stopped at {} mm, then settled at {} mm'.format(dist_mm, dist_stopped, r.tracker.distance_mm()))
     
     
 def turn(r, args):
-    # Attempt to put the robot into safe mode
-    r.safe = True
-    r.Control()
-
-    r.sensors.GetAll()
-    if r.sensors['oi-mode'] != 'safe':
-        print ('Failed to enter safe mode - is a wheel up or the front over a cliff?')
-        return
-
-    k = RobotKinematics(r)
-
     if len(args) > 0:
         angle = float(args[0])
     else:
         angle = -360
 
-    turn_relative(r, k, angle)
+    turn_relative(r, angle)
 
 def drive(r, args):
-    # Attempt to put the robot into safe mode
-    r.safe = True
-    r.Control()
-
-    r.sensors.GetAll()
-    if r.sensors['oi-mode'] != 'safe':
-        print ('Failed to enter safe mode - is a wheel up or the front over a cliff?')
-        return
-
-    k = RobotKinematics(r)
-
     if len(args) > 0:
         dist_mm = float(args[0])
     else:
         dist_mm = 30
 
-    drive_relative(r, k, dist_mm)
+    drive_relative(r, dist_mm)
 
 def draw(r, args):
     pass
@@ -185,7 +190,7 @@ commands = {
     }
 
 if __name__ == '__main__':
-    r = pyrobot2.Create2('/dev/ttyAMA0')
+    r = Robot()
 
     parser = argparse.ArgumentParser()
     parser.add_argument('command', help='Name of command to run, valid commands are {}'.format(commands.keys()))
