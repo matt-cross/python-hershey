@@ -5,6 +5,9 @@ import time
 
 import pyrobot2
 
+def sign_extend_16(value):
+    return (value & 0x7FFF) - (value & 0x8000)
+
 class RobotKinematics:
     def __init__(self, r, counts_per_rev = 508.8, wheel_diam_mm = 72.0, wheel_base_mm = 235.0):
         self.counts_per_rev = counts_per_rev
@@ -12,20 +15,20 @@ class RobotKinematics:
         self.wheel_base_mm = wheel_base_mm
 
         self.reset(r)
-        
+
     def update(self, r):
         new_left = r.data['encoder-counts-left']
         new_right = r.data['encoder-counts-right']
 
-        delta_left = new_left - self.prev_left_encoder
-        delta_right = new_right - self.prev_right_encoder
+        delta_left = sign_extend_16(new_left - self.prev_left_encoder)
+        delta_right = sign_extend_16(new_right - self.prev_right_encoder)
 
         self.prev_left_encoder = new_left
         self.prev_right_encoder = new_right
 
         delta_left_mm = delta_left / self.counts_per_rev * (math.pi * 72)
         delta_right_mm = delta_right / self.counts_per_rev * (math.pi * 72)
-        
+
         self.distance_mm += (delta_left_mm + delta_right_mm) / 2
 
         self.angle_rad += (delta_right_mm - delta_left_mm) / self.wheel_base_mm
