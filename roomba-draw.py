@@ -134,7 +134,7 @@ def turn_relative(r, new_angle):
     r.tracker_reset()
     
     prev_speed = 0
-    max_accel = 10
+    max_accel = 5
 
     # Until we reach our stopping point
     while abs(new_angle - r.tracker.angle_deg()) > 1.0:
@@ -173,7 +173,7 @@ def drive_relative(r, dist_mm):
     r.tracker_reset()
     
     prev_speed = 0
-    max_accel = 25
+    max_accel = 5
     
     # Until we reach our stopping point
     while abs(dist_mm - r.tracker.distance_mm()) > 1.5:
@@ -255,8 +255,8 @@ def draw(r, args):
 
     h = HersheyFont()
 
-    x_scale = 2
-    y_scale = -2 # Y axis positive is *down* for Hershey...
+    x_scale = 3
+    y_scale = -3 # Y axis positive is *down* for Hershey...
 
     r.pen.up()
     for c in list(text):
