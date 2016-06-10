@@ -232,7 +232,6 @@ def goto(r, x, y):
     delta_y = y - r.tracker.y_mm()
     
     abs_heading_rad = math.atan2(delta_y, delta_x)
-    dist_mm = math.sqrt(delta_x * delta_x + delta_y * delta_y)
 
     # Make heading relative in degrees and turn to it:
     delta_heading_rad = abs_heading_rad - r.tracker.theta_rad()
@@ -244,8 +243,11 @@ def goto(r, x, y):
 
     turn_relative(r, delta_heading_rad * 180 / math.pi)
 
-    # Move:
-    drive_relative(r, dist_mm)
+    # Recalc distance and move (undershoot slightly on purpose):
+    delta_x = x - r.tracker.x_mm()
+    delta_y = y - r.tracker.y_mm()
+    dist_mm = math.sqrt(delta_x * delta_x + delta_y * delta_y)
+    drive_relative(r, dist_mm - 5)
     
 def draw(r, args):
     if len(args) < 1:
